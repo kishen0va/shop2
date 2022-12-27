@@ -1,26 +1,68 @@
-from django.shortcuts import render
+from rest_framework import viewsets, mixins, generics, permissions
+from django.shortcuts import render 
+from django.contrib.auth.models import User
+from django.http import HttpResponseRedirect
 
-import django_filters.rest_framework
-from rest_framework import viewsets, generics, mixins, filters
-from .serializers import CategorySerializer, BrandSerializer, ClothersSerializer
+from .models import Clothes, Category, Brand, ClothesSize, ClothesColor, ClothesInStock, RSSSubs
+from .serializers import CategoryListSerializer, CategoryDetailSerializer, UserSerializer, ClothesListSerializer, ClothesSizeSerializer, ClothesColorSerializer, ClothesInStockSerializer, RSSSubsSerializer
+from .permissions import IsAdminOrReadOnly, IsOwnerOrReadOnly, IsClotherOwnerOrReadOnly
 
-from .models import Category, Brand, Clothes
+class UserListView(generics.ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 
-class CategoryList(generics.ListAPIView):
+
+class UserDetailView(generics.RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+
+class CategoryListViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateModelMixin):
     queryset = Category.objects.all()
-    serializer_class = CategorySerializer
-
-class BrandList(generics.ListAPIView):
-    queryset = Brand.objects.all()
-    serializer_class = BrandSerializer 
+    serializer_class = CategoryListSerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
 
+class CategoryDetailViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.DestroyModelMixin):
+    queryset = Category.objects.all()
+    serializer_class = CategoryDetailSerializer
+    permission_classes = (permissions.IsAdminUser,)
 
 
-class ClothersListViewSet(viewsets.GenericViewSet,mixins.ListModelMixin, mixins.CreateModelMixin):
+class ClothesListViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateModelMixin):
     queryset = Clothes.objects.all()
-    serializer_class = ClothersSerializer
-    filter_backends = [django_filters.rest_framework.DjangoFilterBackend, filters.SearchFilter]
-    filter_feileds = []
-    search_fields = [('id', 'clothes_name', 'clothes_description', 'clothes_slug', 'clothes_type', 'clothes_season', 'clothes_price', 'clothes_image', 'clothes_brand', 'clothes_category', )]
-    orderong_fields = ['id', 'clothes_name']
+    serializer_class = ClothesListSerializer
+    permission_classes = (IsOwnerOrReadOnly)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+        return super().perform_create(serializer)
+
+
+class ClothesSizeListViewSet(viewsets.ModelViewSet):
+    queryset = ClothesSize.objects.all()
+    serializer_class = ClothesSizeSerializer
+    permission_classes = (IsAdminOrReadOnly,)
+
+
+class ClothesColorListViewSet(viewsets.ModelViewSet):
+    queryset = ClothesColor.objects.all()
+    serializer_class = ClothesColorSerializer
+
+
+class ClothesInStockListViewSet(viewsets.ModelViewSet):
+    queryset = ClothesInStock.objects.all()
+    serializer_class = ClothesInStockSerializer
+    permission_classes = (IsClotherOwnerOrReadOnly,)
+
+
+class RSSSubsViewSet(viewsets.ModelViewSet):
+    queryset = RSSSubs.objects.all()
+    serializer_class = RSSSubsSerializer
+    permission_classes = (permissions.AllowAny,)
+
+
+class RedirectToTelegramBoView(generics.ListAPIView):
+    
+    def get(self, request, *args, **kwargs):
+        return HttpResponseRedirect(redirect_to='https://t.me/yrk_rysyaBOT')
